@@ -4,6 +4,18 @@ gphr uploads Go programs (as binaries) to GitHub Releases.
 
 https://github.com/blog/1547-release-your-software
 
+Go binaries are not terribly small, so gphr also does the work of cleaning up
+after itself, and deleting old binaries (assets) when a new one takes its place.
+(You can override this behavior with --keep.)
+
+A binary is of the form `<program>_$GOOS_$GOARCH` (with an optional `.exe` at
+the end for Windows)
+
+You'll have to create a GitHub token to use with gphr in order to upload and
+delete assets: https://github.com/blog/1509-personal-api-tokens
+
+You can use gnat to cross-compile: https://github.com/robertkrimen/gnat
+
 ### Install
 
     go get github.com/robertkrimen/gphr/gphr
