@@ -1,4 +1,4 @@
-.PHONY: test build install
+.PHONY: test build install release
 
 test: build
 
@@ -7,3 +7,6 @@ build:
 
 install:
 	go install
+
+release:
+	$(MAKE) -C .. $@

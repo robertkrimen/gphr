@@ -50,67 +50,6 @@ func client(owner, repository string) (*gphr.GitHub, error) {
 	return gh, nil
 }
 
-type _binary struct {
-	filename string
-	name     string
-	os       string
-	arch     string
-	asset    github.ReleaseAsset
-}
-
-func newBinary(target string) *_binary {
-	bn := &_binary{}
-	if match := matchBinary.FindStringSubmatch(target); match != nil {
-		return &_binary{
-			filename: target,
-			name:     match[1],
-			os:       match[2],
-			arch:     match[3],
-		}
-	} else {
-		return &_binary{
-			name: target,
-		}
-	}
-	return bn
-}
-
-func (bn *_binary) underscore() string {
-	filename := bn.name + "_" + bn.os + "_" + bn.arch
-	if extension := bn.extension(); extension != "" {
-		filename += extension
-	}
-	return filename
-}
-
-func (bn *_binary) dash() string {
-	filename := bn.identifier()
-	if extension := bn.extension(); extension != "" {
-		filename += extension
-	}
-	return filename
-}
-
-func (bn *_binary) extension() string {
-	if bn.os == "windows" {
-		return ".exe"
-	}
-	return ""
-}
-
-func (bn *_binary) identifier() string {
-	return bn.name + "-" + bn.os + "-" + bn.arch
-}
-
-func (bn *_binary) match(asset string) bool {
-	if match := matchBinary.FindStringSubmatch(asset); match != nil {
-		if bn.name == match[1] && bn.os == match[2] && bn.arch == match[3] {
-			return true
-		}
-	}
-	return false
-}
-
 var matchBuiltPackage = regexp.MustCompile(`(?m)^#\s*\n^#\s*(.*)\s*\n^#\s*\n`)
 
 func getToken() (string, error) {
@@ -207,18 +146,18 @@ func main() {
 			// Make sure arguments look like release assets
 			// (Are in the form of *_$GOOOS_$GOARCH, etc.)
 			err = nil
-			var binaries []*_binary
+			var binaries []*gphr.Binary
 			for _, argument := range flags.release_.Args() {
 				if match := matchBinary.FindStringSubmatch(argument); match != nil {
-					binaries = append(binaries, &_binary{
-						filename: argument,
-						name:     match[1],
-						os:       match[2],
-						arch:     match[3],
+					binaries = append(binaries, &gphr.Binary{
+						Filename: argument,
+						Name:     match[1],
+						GOOS:     match[2],
+						GOARCH:   match[3],
 					})
 				} else {
 					lg.err("%q: not a binary?\n", argument)
-					err = lg.error("trying to upload 1 or more non-binary assets")
+					err = lg.error("trying to upload 1 or more non-binary.Assets")
 				}
 			}
 			if err != nil {
@@ -296,11 +235,11 @@ func main() {
 			err = nil
 			for _, binary := range binaries {
 				for _, asset := range assets {
-					if binary.match(*asset.Name) {
+					if binary.Match(*asset.Name) {
 						if *flags.release.force {
-							binary.asset = asset
+							binary.Asset = asset
 						} else {
-							lg.err("%s: an asset of the same kind already exists (%s)", binary.filename, *asset.Name)
+							lg.err("%s: an asset of the same kind already exists (%s)", binary.Filename, *asset.Name)
 							err = lg.error("1 or more assets with the same name already exist")
 						}
 					}
@@ -311,16 +250,16 @@ func main() {
 			}
 
 			for _, binary := range binaries {
-				file, err := os.Open(binary.filename)
+				file, err := os.Open(binary.Filename)
 				if err != nil {
 					return err
 				}
 				defer file.Close()
 
-				if binary.asset.ID != nil {
-					lg.dbg("delete asset => %s (%s)", *binary.asset.Name, *binary.asset.URL)
+				if binary.Asset.ID != nil {
+					lg.dbg("delete asset => %s (%s)", *binary.Asset.Name, *binary.Asset.URL)
 					if !*flags.main.dryRun {
-						response, err := gh.Client.Repositories.DeleteReleaseAsset(owner, repository, *binary.asset.ID)
+						response, err := gh.Client.Repositories.DeleteReleaseAsset(owner, repository, *binary.Asset.ID)
 						if err != nil {
 							if response == nil || response.StatusCode != 404 {
 								return err
@@ -332,19 +271,19 @@ func main() {
 				tmp, _ := file.Stat()
 				size := tmp.Size()
 
-				lg.dbg("upload asset => %s (%d)", binary.filename, size)
+				lg.dbg("upload asset => %s (%d)", binary.Filename, size)
 
 				if *flags.main.dryRun {
 					continue
 				}
 
-				log("Uploading %s (%d)", binary.filename, size)
+				log("Uploading %s (%d)", binary.Filename, size)
 
-				asset, _, err := gh.Client.Repositories.UploadReleaseAsset(owner, repository, *release.ID, &github.UploadOptions{Name: binary.filename}, file)
+				asset, _, err := gh.Client.Repositories.UploadReleaseAsset(owner, repository, *release.ID, &github.UploadOptions{Name: binary.Filename}, file)
 				if err != nil {
 					return err
 				}
-				binary.asset = *asset
+				binary.Asset = *asset
 			}
 
 			if !*flags.release.keep {
@@ -358,10 +297,10 @@ func main() {
 				for _, release := range releases {
 					for _, asset := range release.Assets {
 						for _, binary := range binaries {
-							if *binary.asset.ID == *asset.ID {
+							if *binary.Asset.ID == *asset.ID {
 								break
-							} else if binary.match(*asset.Name) {
-								lg.dbg("delete asset => %s (%s)", *binary.asset.Name, *binary.asset.URL)
+							} else if binary.Match(*asset.Name) {
+								lg.dbg("delete asset => %s (%s)", *binary.Asset.Name, *binary.Asset.URL)
 								response, err := gh.Client.Repositories.DeleteReleaseAsset(owner, repository, *asset.ID)
 								if err != nil {
 									if response == nil || response.StatusCode != 404 {
@@ -400,10 +339,10 @@ func main() {
 				program = targetOrProgram
 			}
 
-			binary := newBinary(program)
-			if binary.os == "" {
-				binary.os = runtime.GOOS
-				binary.arch = runtime.GOARCH
+			binary := gphr.NewBinary(program)
+			if binary.GOOS == "" {
+				binary.GOOS = runtime.GOOS
+				binary.GOARCH = runtime.GOARCH
 			}
 
 			base := "https://github.com/" + owner + "/" + repository
@@ -461,8 +400,8 @@ func main() {
 				name := match[1]
 				base := base + "/releases/download/" + name + "/"
 
-				if binary.filename != "" {
-					done, err := try(base+binary.filename, "", binary.filename, false)
+				if binary.Filename != "" {
+					done, err := try(base+binary.Filename, "", binary.Filename, false)
 					if err != nil {
 						return err
 					}
@@ -471,7 +410,7 @@ func main() {
 					}
 				}
 
-				done, err := try(base+binary.underscore(), "", binary.underscore(), false)
+				done, err := try(base+binary.Underscore(), "", binary.Underscore(), false)
 				if err != nil {
 					return err
 				}
@@ -479,7 +418,7 @@ func main() {
 					return nil
 				}
 
-				done, err = try(base+binary.dash(), "", binary.dash(), false)
+				done, err = try(base+binary.Dash(), "", binary.Dash(), false)
 				if err != nil {
 					return err
 				}
@@ -501,11 +440,11 @@ func main() {
 
 			for _, release := range releases {
 				for _, asset := range release.Assets {
-					if binary.match(*asset.Name) {
+					if binary.Match(*asset.Name) {
 						filename := *asset.Name
 						if !*flags.get.preserve {
-							if binary.os == runtime.GOOS && binary.arch == runtime.GOARCH {
-								filename = binary.name
+							if binary.GOOS == runtime.GOOS && binary.GOARCH == runtime.GOARCH {
+								filename = binary.Name
 							}
 						}
 
@@ -519,7 +458,7 @@ func main() {
 				}
 			}
 
-			log("Nothing found for %s in %s", binary.identifier(), gh.Location())
+			log("Nothing found for %s in %s", binary.Identifier(), gh.Location())
 
 		case "list":
 			_, owner, repository, _, err := getTarget(flags.main_.Arg(1))
