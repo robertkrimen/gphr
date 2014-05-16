@@ -14,7 +14,7 @@ import (
 	"github.com/google/go-github/github"
 	"github.com/gregjones/httpcache"
 
-	"github.com/robertkrimen/gphr"
+	"github.com/robertkrimen/gphr/gphr"
 )
 
 // /bin/sh -c ...

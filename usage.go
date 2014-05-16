@@ -12,34 +12,47 @@ If you need help cross-compiling, try gnat: https://github.com/robertkrimen/gnat
 
 Install
 
-    go get github.com/robertkrimen/gphr/gphr
+    go get github.com/robertkrimen/gphr
 
 Usage
 
-    gphr <options> ...
+    gphr [-token=""] [-debug=false] [-dry-run=false] release ...
 
-          -token=""
-                The token to use when authenticating to GitHub:
-                https://github.com/blog/1509-personal-api-tokens
-                If <token> starts with a "!", then this is a command that outputs the
-                token instead. You can also specify a token via the $GPHR_TOKEN
-                environment variable.
-          -debug=false:     Print out debugging information.
-          -dry-run=false:   Do not actually modify the remote repository,
-                            just show what would be done instead.
+        -token=""
+            The token to use when accessing GitHub:
+            https://github.com/blog/1509-personal-api-tokens
 
-        release <assets>
-          -repository="":   The repository (e.g. github.com/alice/example)
-          -force=false:     Overwrite assets if they already exist.
-          -keep=false:      Do NOT delete assets of same kind in other releases.
+            If <token> starts with a "!", then this is a command that outputs the
+            token instead. You can also specify a token via the GPHR_TOKEN
+            environment variable.
 
-          Create a release (if necessary) and upload one or more assets to it.
-          If no <repository> is given, default to the current GitHub remote (gphr
-          will look at the "origin" remote first, then at the "github" remote, if nothing
-          GitHub-ish is found.
-          This command should be run from within a git repository.
-          gphr will make sure that the tag/commit pair at <repository> matches the local
-          tag/commit pair.
+         -debug=false
+            Print out debugging information.
+
+         -dry-run=false
+            Do not actually modify the remote repository, just show what would be done instead.
+
+
+    gphr release [-repository=""] [-force=false] [-keep=false] <assets>
+
+        -repository=""
+            The repository (e.g. github.com/alice/example).
+
+        -force=false
+            Overwrite assets if they already exist.
+
+        -keep=false
+            Do NOT delete assets of same kind in other releases.
+
+        Create a release (if none already exists) and upload one or more assets to it.
+        If no <repository> is given, default to the current GitHub remote (gphr
+        will look at the "origin" remote first, then at the "github" remote, if nothing
+        GitHub-ish is found).
+
+        This command should be run from within a git repository.
+
+        gphr will make sure that the tag/commit pair at <repository> matches the local
+        tag/commit pair.
 
             gphr release example_linux_386 example_darwin_386 example_windows_386.exe
 
@@ -111,36 +124,50 @@ var flags = func() (flags *_flags) {
 }()
 
 func usage() {
-	fmt.Fprintln(os.Stderr, "")
 	fmt.Fprintf(os.Stderr, strings.TrimSpace(`
 Usage of %s:
 
-      -token=""
-            The token to use when authenticating to GitHub:
+    gphr [-token=""] [-debug=false] [-dry-run=false] release ...
+
+        -token=""
+            The token to use when accessing GitHub:
             https://github.com/blog/1509-personal-api-tokens
+
             If <token> starts with a "!", then this is a command that outputs the
-            token instead. You can also specify a token via the $GPHR_TOKEN
+            token instead. You can also specify a token via the GPHR_TOKEN
             environment variable.
-      -debug=false:     Print out debugging information.
-      -dry-run=false:   Do not actually modify the remote repository,
-                        just show what would be done instead.
 
-    release <assets>
-      -repository="":   The repository (e.g. github.com/alice/example)
-      -force=false:     Overwrite assets if they already exist.
-      -keep=false:      Do NOT delete assets of same kind in other releases.
+         -debug=false
+            Print out debugging information.
 
-      Create a release (if necessary) and upload one or more assets to it.
-      If no <repository> is given, default to the current GitHub remote (gphr
-      will look at the "origin" remote first, then at the "github" remote, if nothing
-      GitHub-ish is found.
-      This command should be run from within a git repository.
-      gphr will make sure that the tag/commit pair at <repository> matches the local
-      tag/commit pair.
+         -dry-run=false
+            Do not actually modify the remote repository, just show what would be done instead.
 
-        gphr release example_linux_386 example_darwin_386 example_windows_386.exe
 
-        gphr release --force example_linux_amd64
+    gphr release [-repository=""] [-force=false] [-keep=false] <assets>
+
+        -repository=""
+            The repository (e.g. github.com/alice/example).
+
+        -force=false
+            Overwrite assets if they already exist.
+
+        -keep=false
+            Do NOT delete assets of same kind in other releases.
+
+        Create a release (if none already exists) and upload one or more assets to it.
+        If no <repository> is given, default to the current GitHub remote (gphr
+        will look at the "origin" remote first, then at the "github" remote, if nothing
+        GitHub-ish is found).
+
+        This command should be run from within a git repository.
+
+        gphr will make sure that the tag/commit pair at <repository> matches the local
+        tag/commit pair.
+
+            gphr release example_linux_386 example_darwin_386 example_windows_386.exe
+
+            gphr release --force example_linux_amd64
 
     `), os.Args[0])
 	fmt.Fprintln(os.Stderr, "\n")
