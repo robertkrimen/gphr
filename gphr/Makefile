@@ -1,18 +1,4 @@
-.PHONY: test release install build clean
+.PHONY: test
 
 test:
-	$(MAKE) -C gphr $@
-
-release: test
-	for package in gphr; do (cd $$package && godocdown --signature > README.markdown); done
-	cp gphr/README.markdown .
-
-install: test
-	$(MAKE) -C gphr $@
-	go install
-
-build:
-	$(MAKE) -C gphr $@
-
-clean:
-	$(MAKE) -C gphr $@
+	go test

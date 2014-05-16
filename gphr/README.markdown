@@ -36,11 +36,12 @@ func MatchTarget(target string) (host, owner, repository, program string)
 
 ```go
 type Binary struct {
-	Filename string
-	Name     string
-	GOOS     string
-	GOARCH   string
-	Asset    github.ReleaseAsset
+	Path    string              // ../../example/example_linux_386
+	Name    string              // example_linux_386
+	Program string              // example
+	GOOS    string              // linux
+	GOARCH  string              // 386
+	Asset   github.ReleaseAsset //
 }
 ```
 
@@ -48,7 +49,7 @@ type Binary struct {
 #### func  NewBinary
 
 ```go
-func NewBinary(target string) *Binary
+func NewBinary(path string) *Binary
 ```
 
 #### func (*Binary) Dash

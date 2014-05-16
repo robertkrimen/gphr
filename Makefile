@@ -1,4 +1,4 @@
-.PHONY: test build install release clean
+.PHONY: test build install release gphr_release clean
 
 test: build
 
@@ -11,5 +11,9 @@ install:
 release: test
 	for package in . gphr; do (cd $$package && godocdown --signature > README.markdown); done
 
+gphr_release: test
+	gnat compile .
+	./gphr_ release gphr_darwin_386 gphr_linux_* gphr_windows_386.exe
+
 clean:
-	rm -f gphr_
+	rm -f gphr_*

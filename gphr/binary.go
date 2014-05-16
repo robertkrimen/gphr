@@ -1,6 +1,7 @@
 package gphr
 
 import (
+	"path/filepath"
 	"regexp"
 
 	"github.com/google/go-github/github"
@@ -27,32 +28,36 @@ var MatchBinary = regexp.MustCompile(`^(.*)[_-](darwin|dragonfly|freebsd|linux|n
 // windows/386
 
 type Binary struct {
-	Filename string
-	Name     string
-	GOOS     string
-	GOARCH   string
-	Asset    github.ReleaseAsset
+	Path    string              // ../../example/example_linux_386
+	Name    string              // example_linux_386
+	Program string              // example
+	GOOS    string              // linux
+	GOARCH  string              // 386
+	Asset   github.ReleaseAsset //
 }
 
-func NewBinary(target string) *Binary {
+func NewBinary(path string) *Binary {
 	bn := &Binary{}
-	if match := MatchBinary.FindStringSubmatch(target); match != nil {
+	name := filepath.Base(path)
+	if match := MatchBinary.FindStringSubmatch(name); match != nil {
 		return &Binary{
-			Filename: target,
-			Name:     match[1],
-			GOOS:     match[2],
-			GOARCH:   match[3],
+			Path:    path,
+			Name:    name,
+			Program: match[1],
+			GOOS:    match[2],
+			GOARCH:  match[3],
 		}
 	} else {
 		return &Binary{
-			Name: target,
+			Path: path,
+			Name: name,
 		}
 	}
 	return bn
 }
 
 func (bn *Binary) Underscore() string {
-	filename := bn.Name + "_" + bn.GOOS + "_" + bn.GOARCH
+	filename := bn.Program + "_" + bn.GOOS + "_" + bn.GOARCH
 	if extension := bn.Extension(); extension != "" {
 		filename += extension
 	}
@@ -75,12 +80,12 @@ func (bn *Binary) Extension() string {
 }
 
 func (bn *Binary) Identifier() string {
-	return bn.Name + "-" + bn.GOOS + "-" + bn.GOARCH
+	return bn.Program + "-" + bn.GOOS + "-" + bn.GOARCH
 }
 
 func (bn *Binary) Match(asset string) bool {
 	if match := MatchBinary.FindStringSubmatch(asset); match != nil {
-		if bn.Name == match[1] && bn.GOOS == match[2] && bn.GOARCH == match[3] {
+		if bn.Program == match[1] && bn.GOOS == match[2] && bn.GOARCH == match[3] {
 			return true
 		}
 	}

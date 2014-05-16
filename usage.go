@@ -8,6 +8,36 @@ Before you can upload, you'll have to create a GitHub token: https://github.com/
 Go binaries are not terribly small, so gphr also does the work of cleaning up after itself, deleting old binaries when a new one can take its place (you can override this behavior with --keep).
 A binary is of the form `<name>_$GOOS_$GOARCH` (with an optional `.exe` at the end for Windows)
 
+Workflow
+
+The workflow for a release:
+
+    1. Determine the GitHub owner/repository from the local
+       repository (if not explicity given).
+         git config --get remote.origin.url
+         git config --get remote.github.url # If "origin" is unsuccessful
+
+    2. Determine the tag for HEAD in the local repository.
+       This is the target tag.
+         git describe --tags --exact-match
+
+    3. Determine the commit for the target tag.
+         git rev-list <tag>
+
+    4. Find the release that matches the target tag. If found, then
+       make sure the tag commit is the same in both the local
+       and remote repositories.
+       This is the target release.
+
+    5. If no release was found, then create a release for the target
+       tag. Again, make sure the tag commit is the same in both
+       the local and remote repositories.
+       This is the target release.
+
+    6. Upload assets to the target release.
+
+    7. Delete matching assets from other releases.
+
 If you need help cross-compiling, try gnat: https://github.com/robertkrimen/gnat
 
 Install
@@ -16,7 +46,7 @@ Install
 
 Usage
 
-    gphr [-token=""] [-debug=false] [-dry-run=false] release ...
+    gphr [-token=""] [-debug=false] [-dry-run=false] <command> ...
 
         -token=""
             The token to use when accessing GitHub:
@@ -31,7 +61,6 @@ Usage
 
          -dry-run=false
             Do not actually modify the remote repository, just show what would be done instead.
-
 
     gphr release [-repository=""] [-force=false] [-keep=false] <assets>
 
@@ -127,7 +156,7 @@ func usage() {
 	fmt.Fprintf(os.Stderr, strings.TrimSpace(`
 Usage of %s:
 
-    gphr [-token=""] [-debug=false] [-dry-run=false] release ...
+    gphr [-token=""] [-debug=false] [-dry-run=false] <command> ...
 
         -token=""
             The token to use when accessing GitHub:
@@ -142,7 +171,6 @@ Usage of %s:
 
          -dry-run=false
             Do not actually modify the remote repository, just show what would be done instead.
-
 
     gphr release [-repository=""] [-force=false] [-keep=false] <assets>
 
@@ -194,4 +222,12 @@ Usage of %s:
    list <repository>
 
      List all gphr-like assets for <repository>.
+
+//
+
+    1. Make sure the asset arguments actually look like assets, e.g.:
+         example_darwin_386
+         example_windows_386.exe
+         example_linux_amd64
+
 */

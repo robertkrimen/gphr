@@ -92,10 +92,31 @@ func main() {
 		switch command := flags.main_.Arg(0); command {
 
 		case "release":
+			var err error
+
 			flags.release_.Parse(flags.main_.Args()[1:])
 
-			owner, repository := "", ""
+			// 0. Make sure the asset arguments actually look like assets.
+			// (Are in the form of *_$GOOOS_$GOARCH, etc.)
+			var binaries []*gphr.Binary
+			for _, argument := range flags.release_.Args() {
+				if match := matchBinary.FindStringSubmatch(argument); match != nil {
+					// FIXME
+					binaries = append(binaries, gphr.NewBinary(argument))
+				} else {
+					lg.err("%q: not a binary?\n", argument)
+					err = lg.error("trying to upload 1 or more non-binary.Assets")
+				}
+			}
+			if err != nil {
+				return err
+			}
+			if len(binaries) == 0 {
+				return lg.error("no binaries to upload")
+			}
 
+			// 1. Determine the GitHub owner/repository from the local repository (if not explicity given).
+			owner, repository := "", ""
 			repository = *flags.release.repository
 			if repository != "" {
 				match := strings.SplitN(repository, "/", 4)
@@ -124,7 +145,7 @@ func main() {
 			}
 			cl = gh.Client
 
-			// Get the tag for HEAD
+			// 2. Determine the tag for HEAD in the local repository.
 			tag, err := gitGetTag()
 			if err != nil {
 				return err
@@ -136,44 +157,19 @@ func main() {
 				return lg.error("HEAD (%s) is not tagged", commit)
 			}
 
-			// Get the commit for the tag
+			// 3. Determine the commit for the target tag.
 			tagCommit, err := gitGetTagCommit(tag)
 			if err != nil {
 				return err
 			}
 			lg.dbg("tagCommit = %s", tagCommit)
 
-			// Make sure arguments look like release assets
-			// (Are in the form of *_$GOOOS_$GOARCH, etc.)
-			err = nil
-			var binaries []*gphr.Binary
-			for _, argument := range flags.release_.Args() {
-				if match := matchBinary.FindStringSubmatch(argument); match != nil {
-					binaries = append(binaries, &gphr.Binary{
-						Filename: argument,
-						Name:     match[1],
-						GOOS:     match[2],
-						GOARCH:   match[3],
-					})
-				} else {
-					lg.err("%q: not a binary?\n", argument)
-					err = lg.error("trying to upload 1 or more non-binary.Assets")
-				}
-			}
-			if err != nil {
-				return err
-			}
-			if len(binaries) == 0 {
-				return lg.error("no binaries to upload")
-			}
-
-			// Get a list of releases
 			releases, err := gh.GetReleases()
 			if err != nil {
 				return err
 			}
 
-			// Find the release that matches the tag at HEAD
+			// 4. Find the release that matches the target tag.
 			var release *gphr.Release
 			for _, tmp := range releases {
 				if *tmp.TagName == tag {
@@ -196,8 +192,8 @@ func main() {
 				return nil
 			}
 
+			// 5. If no release was found, then create a release for the target tag.
 			if release == nil {
-				// If there is no release that matches
 				err := checkTag(tag)
 				if err != nil {
 					return err
@@ -209,8 +205,6 @@ func main() {
 					return nil
 				}
 
-				// Create a release for tag
-				// TODO This will error out if tag does not exist, right?
 				release = &gphr.Release{}
 				release.TagName = &tag
 				release_, _, err := gh.Client.Repositories.CreateRelease(owner, repository, &release.RepositoryRelease)
@@ -226,7 +220,6 @@ func main() {
 				}
 			}
 
-			// Get the assets for the release
 			assets, err := gh.GetReleaseAssets(release.RepositoryRelease)
 			if err != nil {
 				return err
@@ -239,7 +232,7 @@ func main() {
 						if *flags.release.force {
 							binary.Asset = asset
 						} else {
-							lg.err("%s: an asset of the same kind already exists (%s)", binary.Filename, *asset.Name)
+							lg.err("%s: an asset of the same kind already exists (%s)", binary.Name, *asset.Name)
 							err = lg.error("1 or more assets with the same name already exist")
 						}
 					}
@@ -249,8 +242,9 @@ func main() {
 				return err
 			}
 
+			// 6. Upload assets to the target release.
 			for _, binary := range binaries {
-				file, err := os.Open(binary.Filename)
+				file, err := os.Open(binary.Path)
 				if err != nil {
 					return err
 				}
@@ -271,15 +265,15 @@ func main() {
 				tmp, _ := file.Stat()
 				size := tmp.Size()
 
-				lg.dbg("upload asset => %s (%d)", binary.Filename, size)
+				lg.dbg("upload asset => %s (%d)", binary.Name, size)
 
 				if *flags.main.dryRun {
 					continue
 				}
 
-				log("Uploading %s (%d)", binary.Filename, size)
+				log("Uploading %s (%d)", binary.Path, size)
 
-				asset, _, err := gh.Client.Repositories.UploadReleaseAsset(owner, repository, *release.ID, &github.UploadOptions{Name: binary.Filename}, file)
+				asset, _, err := gh.Client.Repositories.UploadReleaseAsset(owner, repository, *release.ID, &github.UploadOptions{Name: binary.Name}, file)
 				if err != nil {
 					return err
 				}
@@ -287,12 +281,7 @@ func main() {
 			}
 
 			if !*flags.release.keep {
-				// Perhaps a small race condition when deleting
-				releases, err = gh.GetReleases()
-				if err != nil {
-					return err
-				}
-
+				// 7. Delete matching assets from other releases.
 				err = nil
 				for _, release := range releases {
 					for _, asset := range release.Assets {
@@ -310,13 +299,24 @@ func main() {
 								}
 							}
 						}
-
 					}
+				}
+				if err != nil {
+					return err
 				}
 			}
 
 		case "get":
 			flags.get_.Parse(flags.main_.Args()[1:])
+
+			// FIXME This is confusing...
+			// What cases are we handling?
+			//
+			// gphr get
+			// gphr get example
+			// gphr get github.com/alice/example
+			// gphr get github.com/alice/example/example_linux_386
+			// gphr get github.com/alice/xyzzy
 
 			targetOrProgram := flags.get_.Arg(0)
 			if targetOrProgram == "" {
@@ -339,6 +339,8 @@ func main() {
 				program = targetOrProgram
 			}
 
+			// gphr get example_linux_386
+			// gphr get example
 			binary := gphr.NewBinary(program)
 			if binary.GOOS == "" {
 				binary.GOOS = runtime.GOOS
@@ -400,8 +402,10 @@ func main() {
 				name := match[1]
 				base := base + "/releases/download/" + name + "/"
 
-				if binary.Filename != "" {
-					done, err := try(base+binary.Filename, "", binary.Filename, false)
+				// An explicit get, ...
+				// gphr get github.com/alice/example/example_linux_386
+				if binary.Name != "" {
+					done, err := try(base+binary.Name, "", binary.Name, false)
 					if err != nil {
 						return err
 					}
@@ -410,20 +414,25 @@ func main() {
 					}
 				}
 
-				done, err := try(base+binary.Underscore(), "", binary.Underscore(), false)
-				if err != nil {
-					return err
-				}
-				if done {
-					return nil
-				}
+				// An implicit get, make a guess...
+				// gphr get github.com/alice/example
+				// gphr get github.com/alice/example/example
+				{
+					done, err := try(base+binary.Underscore(), "", binary.Underscore(), false)
+					if err != nil {
+						return err
+					}
+					if done {
+						return nil
+					}
 
-				done, err = try(base+binary.Dash(), "", binary.Dash(), false)
-				if err != nil {
-					return err
-				}
-				if done {
-					return nil
+					done, err = try(base+binary.Dash(), "", binary.Dash(), false)
+					if err != nil {
+						return err
+					}
+					if done {
+						return nil
+					}
 				}
 			}
 
@@ -444,7 +453,7 @@ func main() {
 						filename := *asset.Name
 						if !*flags.get.preserve {
 							if binary.GOOS == runtime.GOOS && binary.GOARCH == runtime.GOARCH {
-								filename = binary.Name
+								filename = binary.Program
 							}
 						}
 
@@ -500,7 +509,7 @@ func main() {
 		case "test":
 
 			owner, repository, err := gitGetGitHubURL()
-			log("owner=%s repository=%s err=%v\n", owner, repository)
+			log("owner=%s repository=%s err=%v\n", owner, repository, err)
 
 			tag, err := gitGetTag()
 			log("tag=%s err=%v\n", tag, err)
