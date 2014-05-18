@@ -273,6 +273,8 @@ func main() {
 
 				log("Uploading %s (%d)", binary.Path, size)
 
+				// TODO Make sure binary.Name is well-formed
+				//asset, _, err := gh.UploadReleaseAsset(owner, repository, *release.ID, binary.Name, file)
 				asset, _, err := gh.Client.Repositories.UploadReleaseAsset(owner, repository, *release.ID, &github.UploadOptions{Name: binary.Name}, file)
 				if err != nil {
 					return err

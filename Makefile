@@ -13,7 +13,7 @@ release: test
 
 gphr_release: test
 	gnat compile .
-	./gphr_ release gphr_darwin_386 gphr_linux_* gphr_windows_386.exe
+	./gphr_ release gphr_{darwin,linux,windows}_{386,amd64}*
 
 clean:
 	rm -f gphr_*

@@ -9,8 +9,11 @@ https://github.com/robertkrimen/gphr
 package gphr
 
 import (
+	"errors"
 	"fmt"
 	"net/http"
+	"net/url"
+	"os"
 	"sort"
 	"strings"
 
@@ -76,6 +79,36 @@ func NewGitHub(owner, repository string, client *http.Client, token string) *Git
 
 func (gh *GitHub) Location() string {
 	return fmt.Sprintf("github.com/%s/%s", gh.Owner, gh.Repository)
+}
+
+func (gh *GitHub) UploadReleaseAsset(owner, repository string, release int, name string, file *os.File) (*github.ReleaseAsset, *github.Response, error) {
+	url_, err := url.Parse(fmt.Sprintf("repos/%s/%s/releases/%d/assets", owner, repository, release))
+	if err != nil {
+		return nil, nil, err
+	}
+	query := url_.Query()
+	query.Add("name", name)
+	url_.RawQuery = query.Encode()
+
+	stat, err := file.Stat()
+	if err != nil {
+		return nil, nil, err
+	}
+	if stat.IsDir() {
+		return nil, nil, errors.New("invalid asset: is a directory")
+	}
+
+	rq, err := gh.Client.NewUploadRequest(url_.String(), file, stat.Size(), "application/octet-stream")
+	if err != nil {
+		return nil, nil, err
+	}
+
+	asset := new(github.ReleaseAsset)
+	rp, err := gh.Client.Do(rq, asset)
+	if err != nil {
+		return nil, rp, err
+	}
+	return asset, rp, err
 }
 
 func (gh *GitHub) TagExists(tag string) (bool, error) {
@@ -144,6 +177,25 @@ func (gh *GitHub) GetReleases() ([]*Release, error) {
 	sort.Sort(sort.Reverse(_sortReleaseByTime(releases)))
 
 	return releases, nil
+}
+
+func (gh *GitHub) GetAssetURL(program, platform string) (string, error) {
+	releases, err := gh.GetReleases()
+	if err != nil {
+		return "", err
+	}
+
+	binary := NewBinary(program + "_" + platform)
+
+	for _, release := range releases {
+		for _, asset := range release.Assets {
+			if binary.Match(*asset.Name) {
+				return "https://" + gh.Location() + "/releases/download/" + *release.TagName + "/" + *asset.Name, nil
+			}
+		}
+	}
+
+	return "", nil
 }
 
 func (gh *GitHub) GetReleaseAssets(release github.RepositoryRelease) ([]github.ReleaseAsset, error) {

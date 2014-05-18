@@ -10,12 +10,6 @@ https://github.com/robertkrimen/gphr
 
 ## Usage
 
-### Index
-
-[func GetTarget](#)
-
-[func MatchTarget](#)
-
 ```go
 var MatchBinary = regexp.MustCompile(`^(.*)[_-](darwin|dragonfly|freebsd|linux|netbsd|openbsd|plan9|windows)[_-](386|amd64|arm)(?:\.exe)?$`)
 ```
@@ -99,6 +93,12 @@ type GitHub struct {
 func NewGitHub(owner, repository string, client *http.Client, token string) *GitHub
 ```
 
+#### func (*GitHub) GetAssetURL
+
+```go
+func (gh *GitHub) GetAssetURL(program, platform string) (string, error)
+```
+
 #### func (*GitHub) GetCommit
 
 ```go
@@ -127,6 +127,12 @@ func (gh *GitHub) Location() string
 
 ```go
 func (gh *GitHub) TagExists(tag string) (bool, error)
+```
+
+#### func (*GitHub) UploadReleaseAsset
+
+```go
+func (gh *GitHub) UploadReleaseAsset(owner, repository string, release int, name string, file *os.File) (*github.ReleaseAsset, *github.Response, error)
 ```
 
 #### type Release
