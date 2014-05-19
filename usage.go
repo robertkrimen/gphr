@@ -14,6 +14,12 @@ Install
 
     go get github.com/robertkrimen/gphr
 
+Download
+
+If you're on system without a Go environment, you can download a gphr executable (Mac OS, Linux, Windows) with curl:
+
+    curl -OJL https://gphr-io.appspot.com/
+
 Usage
 
     gphr [-token=""] [-debug=false] [-dry-run=false] <command> ...
