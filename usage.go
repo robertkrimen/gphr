@@ -16,9 +16,9 @@ Install
 
 Download
 
-If you're on system without a Go environment, you can download a gphr executable (Mac OS, Linux, Windows) with curl:
+If you're on system without a Go environment, you can download a gphr executable (Linux, Mac OS, Windows) with cURL:
 
-    curl -OJL https://gphr-io.appspot.com/
+    curl -JLO https://gphr-io.appspot.com/
 
 Usage
 
@@ -88,7 +88,7 @@ The workflow for a release:
 
     6. Upload assets to the target release.
 
-    7. Delete matching assets from other releases.
+    7. Delete matching assets from other, older releases (if any).
 
 */
 package main
