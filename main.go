@@ -37,12 +37,7 @@ func getTarget(target string) (host, owner, repository, program string, err erro
 	return
 }
 
-func client(owner, repository string) (*gphr.GitHub, error) {
-	token, err := getToken()
-	if err != nil {
-		return nil, err
-	}
-
+func client(owner, repository, token string) (*gphr.GitHub, error) {
 	cache := httpcache.NewMemoryCache()
 	client := httpcache.NewTransport(cache).Client()
 
@@ -96,6 +91,15 @@ func main() {
 
 			flags.release_.Parse(flags.main_.Args()[1:])
 
+			token, err := getToken()
+			if err != nil {
+				return err
+			}
+
+			if token == "" {
+				return lg.error("cannot release without -token or GPHR_TOKEN")
+			}
+
 			// 0. Make sure the asset arguments actually look like assets.
 			// (Are in the form of *_$GOOOS_$GOARCH, etc.)
 			var binaries []*gphr.Binary
@@ -139,7 +143,7 @@ func main() {
 				}
 			}
 
-			gh, err := client(owner, repository)
+			gh, err := client(owner, repository, token)
 			if err != nil {
 				return err
 			}
@@ -311,6 +315,11 @@ func main() {
 		case "get":
 			flags.get_.Parse(flags.main_.Args()[1:])
 
+			token, err := getToken()
+			if err != nil {
+				return err
+			}
+
 			// FIXME This is confusing...
 			// What cases are we handling?
 			//
@@ -438,7 +447,7 @@ func main() {
 				}
 			}
 
-			gh, err := client(owner, repository)
+			gh, err := client(owner, repository, token)
 			if err != nil {
 				return err
 			}
@@ -472,12 +481,19 @@ func main() {
 			log("Nothing found for %s in %s", binary.Identifier(), gh.Location())
 
 		case "list":
+			flags.get_.Parse(flags.main_.Args()[1:])
+
+			token, err := getToken()
+			if err != nil {
+				return err
+			}
+
 			_, owner, repository, _, err := getTarget(flags.main_.Arg(1))
 			if err != nil {
 				return err
 			}
 
-			gh, err := client(owner, repository)
+			gh, err := client(owner, repository, token)
 			if err != nil {
 				return err
 			}
@@ -509,6 +525,12 @@ func main() {
 			}
 
 		case "test":
+			flags.get_.Parse(flags.main_.Args()[1:])
+
+			token, err := getToken()
+			if err != nil {
+				return err
+			}
 
 			owner, repository, err := gitGetGitHubURL()
 			log("owner=%s repository=%s err=%v\n", owner, repository, err)
@@ -519,7 +541,7 @@ func main() {
 			commit, err := gitGetTagCommit(tag)
 			log("commit=%s err=%v\n", commit, err)
 
-			gh, err := client(owner, repository)
+			gh, err := client(owner, repository, token)
 			if err != nil {
 				return err
 			}
