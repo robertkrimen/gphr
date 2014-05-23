@@ -9,11 +9,11 @@ import (
 	"regexp"
 	"runtime"
 	"strings"
+	"text/tabwriter"
 	"time"
 
 	"github.com/google/go-github/github"
 	"github.com/gregjones/httpcache"
-
 	"github.com/robertkrimen/gphr/gphr"
 )
 
@@ -285,6 +285,12 @@ func main() {
 				}
 				binary.Asset = *asset
 			}
+
+			table := tabwriter.NewWriter(os.Stdout, 0, 8, 2, '\t', 0)
+			for _, binary := range binaries {
+				fmt.Fprintf(table, "%s\t%s\n", binary.Name, "https://"+gh.Location()+"/releases/download/"+*release.TagName+"/"+*binary.Asset.Name)
+			}
+			table.Flush()
 
 			if !*flags.release.keep {
 				// 7. Delete matching assets from other releases.
