@@ -5,7 +5,6 @@ https://github.com/blog/1547-release-your-software
 
 Before you can upload, you'll have to create a GitHub token: https://github.com/blog/1509-personal-api-tokens
 
-Go binaries are not terribly small, so gphr also does the work of cleaning up after itself, deleting old binaries when a new one can take its place (you can override this behavior with --keep).
 A binary is of the form `<name>_$GOOS_$GOARCH` (with an optional `.exe` at the end for Windows)
 
 If you need help cross-compiling, try gnat: https://github.com/robertkrimen/gnat
@@ -38,7 +37,7 @@ Usage
          -dry-run=false
             Do not actually modify the remote repository, just show what would be done instead.
 
-    gphr release [-repository=""] [-force=false] [-keep=false] <assets>
+    gphr release [-repository=""] [-force=false] [-keep=true] <assets>
 
         -repository=""
             The repository (e.g. github.com/alice/example).
@@ -46,7 +45,7 @@ Usage
         -force=false
             Overwrite assets if they already exist.
 
-        -keep=false
+        -keep=true
             Do NOT delete assets of same kind in other releases.
 
         Create a release (if none already exists) and upload one or more assets to it.
@@ -146,7 +145,7 @@ var flags = func() (flags *_flags) {
 	flag.Usage = usage
 	flags.release.repository = flag.String("repository", "", "")
 	flags.release.force = flag.Bool("force", false, "")
-	flags.release.keep = flag.Bool("keep", false, "")
+	flags.release.keep = flag.Bool("keep", true, "")
 
 	flag = flags.get_
 	flag.Usage = usage
@@ -175,7 +174,7 @@ Usage of %s:
          -dry-run=false
             Do not actually modify the remote repository, just show what would be done instead.
 
-    gphr release [-repository=""] [-force=false] [-keep=false] <assets>
+    gphr release [-repository=""] [-force=false] [-keep=true] <assets>
 
         -repository=""
             The repository (e.g. github.com/alice/example).
@@ -183,7 +182,7 @@ Usage of %s:
         -force=false
             Overwrite assets if they already exist.
 
-        -keep=false
+        -keep=true
             Do NOT delete assets of same kind in other releases.
 
         Create a release (if none already exists) and upload one or more assets to it.
